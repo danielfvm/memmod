@@ -9,10 +9,10 @@ functions to modify the memory of another application externaly. Additionaly cre
 * inject breakpoints and listen to them
 * execute functions within the target process
 * find modules from `/proc/pid/maps` by name, mode, offset or address
-* inject `.so` into target process with `load_shaderd_library`
+* inject `.so` into target process with `load_shaderd_library()`
 * create function detours with an optional trampoline
 * bindings for ptrace
-* get path to binary file with `get_path_to_executable`
+* get path to binary file with `get_path_to_executable()`
 * search pattern in a module with a signature
 * resolve a pointerchain to find addresses, can be used with the [Pointer Scanner](scripts/pointerscanner.py).
 * supports mono specific calls, [see here](memmod/monomanager.py)
@@ -59,7 +59,7 @@ for addresses. These scripts where inspired by the functionalities of [CheatEngi
 
 ## Resources
 Here are some useful links to websites that helped me making this library and the scripts.
-* [GUided Hacking - Read / Write to memory](https://www.youtube.com/watch?v=VMlW7BoI_IQ)
+* [Guided Hacking - Read / Write to memory](https://www.youtube.com/watch?v=VMlW7BoI_IQ)
 * [Linux-Inject](https://github.com/gaffe23/linux-inject)
 * [ELF-Structure](https://uclibc.org/docs/elf-64-gen.pdf)
 * [Injecting Code with Ptrace](https://ancat.github.io/python/2019/01/01/python-ptrace.html)
