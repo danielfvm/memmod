@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memmod"
+version = "0.0.1"
+description = "A library to modify another program's memory."
+authors = [
+	{ name = "danielfvm", email = "ds@xxxmail.eu"},
+]
+
+[metadata]
+licence = "GPL-3.0-only"
+readme = "README.md"
+homepage = "https://github.com/danielfvm/memmod"
+repository = "https://github.com/danielfvm/memmod"
+
+[dependencies]
+elftools = ">= 0.28"
+capstone = ">= 5.0.0"
+
+[scripts]
+accessanalyzer = "./scripts/accessanalyzer.py"
+pointerscanner = "./scripts/pointerscanner.py"
