@@ -1,3 +1,5 @@
+#!/bin/python3
+
 from dataclasses import dataclass
 from memmod import Process, Module
 
@@ -92,7 +94,9 @@ def hexvalue(x):
     return int(x, 0)
 
 
-if __name__ == '__main__':
+def main():
+    global proc, heap
+
     arguments = argparse.ArgumentParser()
     arguments.add_argument('-n', '--name', help='Select process by name', type=str)
     arguments.add_argument('-p', '--pid', help='Select process by pid', type=int)
@@ -182,3 +186,7 @@ if __name__ == '__main__':
             with open(file_name, 'w+') as f:
                 f.write(text)
             print('Saved to file:', file_name)
+
+
+if __name__ == '__main__':
+    main()

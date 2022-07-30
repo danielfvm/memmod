@@ -20,6 +20,10 @@ repository = "https://github.com/danielfvm/memmod"
 elftools = ">= 0.28"
 capstone = ">= 5.0.0"
 
-[scripts]
-accessanalyzer = "./scripts/accessanalyzer.py"
-pointerscanner = "./scripts/pointerscanner.py"
+[project.scripts]
+accessanalyzer = "memmod.scripts.accessanalyzer:main"
+pointerscanner = "memmod.scripts.pointerscanner:main"
+
+[tool.setuptools.packages.find]
+include = ["memmod*"]
+exclude = ["examples", "gui"]

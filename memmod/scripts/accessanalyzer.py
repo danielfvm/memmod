@@ -1,3 +1,5 @@
+#!/bin/python3
+
 from capstone import Cs, CS_ARCH_X86, CS_MODE_64
 from memmod import Process
 
@@ -87,7 +89,9 @@ def hexvalue(x):
     return int(x, 0)
 
 
-if __name__ == '__main__':
+def main():
+    global addr_search, access_type
+
     arguments = argparse.ArgumentParser()
     arguments.add_argument('-n', '--name', help='Select process by name', type=str)
     arguments.add_argument('-p', '--pid', help='Select process by pid', type=int)
@@ -123,3 +127,6 @@ if __name__ == '__main__':
     print('Start listening for breakpoints...\n')
     proc.listen()
     print('Deleted all breakpoints.')
+
+if __name__ == '__main__':
+    main()
