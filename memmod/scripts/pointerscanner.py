@@ -6,6 +6,8 @@ from memmod import Process, Module
 import argparse
 import sys
 
+from memmod.process import ScanMode, ScanResult
+
 
 # global variables
 proc: Process
@@ -20,16 +22,7 @@ class Pointer():
 
     @property
     def base_offset(self):
-        # we want the offset to start from the base so we calculate the offset from the
-        # base module and the module the static pointer is in and add it to its offset
-        base = proc.find_module(self.module.path)
-        if not base:
-            print('pointerscanner.py: error: Failed to obtain base module of', self.module.path)
-            sys.exit()
-
-        base_offset = self.module.start - base.start
-        return base_offset + self.offset
-
+        return self.module.offset + self.offset
 
     @property
     def location(self):
@@ -42,32 +35,30 @@ class Pointer():
 
         offset_to_scan_start = self.value - heap.start
 
-        for offset in range(bounds):
+        offset = 0
+        while offset < bounds:
             value = int.from_bytes(data[offset:offset+8], sys.byteorder)
             if heap.contains_address(value):
                 pointers.append(Pointer(heap, offset_to_scan_start + offset, value))
+                offset += 7
+            offset += 1
 
-        del data
         return pointers
 
     def find_offset_to_address(self, bounds: int, address: int):
-        if self.value >= address and address <= self.value + bounds:
+        if self.value <= address and address <= self.value + bounds:
             return address - self.value
         return -1
 
 
 def find_static_pointers(module: Module) -> list[Pointer]:
-    data = proc.read(module.start, module.size)
+    results = proc.scan(ScanMode.INSIDE, module.start, module.end, heap.start, heap.end)
 
-    pointers: list[Pointer] = []
+    def result_to_pointer(res: ScanResult) -> Pointer:
+        offset = res.address - module.start
+        return Pointer(module, offset, res.value)
 
-    for offset in range(module.size-8):
-        value = int.from_bytes(data[offset:offset+8], sys.byteorder)
-        if heap.contains_address(value):
-            pointers.append(Pointer(module, offset, value))
-
-    del data
-    return pointers
+    return list(map(result_to_pointer, results))
 
 
 def find_pointer_path_to_address(start_pointers: list[Pointer], address: int, bounds: int, _history=[], _nested=3):
@@ -85,7 +76,8 @@ def find_pointer_path_to_address(start_pointers: list[Pointer], address: int, bo
             continue
 
         dynamic_pointers = pointer.find_dynamic_pointers(bounds)
-        paths.extend(find_pointer_path_to_address(dynamic_pointers, address, bounds, history, _nested-1))
+        results = find_pointer_path_to_address(dynamic_pointers, address, bounds, history, _nested-1)
+        paths.extend(results)
 
     return paths
 
@@ -105,6 +97,7 @@ def main():
     arguments.add_argument('-m', '--module', help='Specify modules to scan for static pointers, default: all', type=str, default=None, nargs='+')
     arguments.add_argument('-r', '--range', help='The range specifies the maximum offset to the address', type=hexvalue, default=0xFF)
     arguments.add_argument('-d', '--depth', help='How long a path can be, default: 3', type=hexvalue, default=3)
+    arguments.add_argument('-sf', '--staticfile', help='Select a file with static pointers', type=str)
 
     args, _ = arguments.parse_known_args()
     args = vars(args)
@@ -130,38 +123,55 @@ def main():
     # search static pointers
     static_pointers: list[Pointer] = []
 
-    print('\nStart searching for static pointers ...')
-    if not args['module']:
-        for mod in proc.modules:
-            if '/dev/' in mod.path or '/memfd/' in mod.path:
-                continue
-            if '(deleted)' in mod.path or ('[' in mod.path and ']' in mod.path):
-                continue
-            if mod.mode != 'rw-p':
-                continue
-            if len(mod.path) <= 0:
-                continue
+    if args['staticfile']:
+        with open(args['staticfile'], 'r') as file:
+            for line in file.readlines():
+                data = line.split('+')
+                module = proc.find_module(data[0])
 
-            results = find_static_pointers(mod)
-            static_pointers.extend(results)
-            print('%s: %d' % (mod.path, len(results)))
+                if module == None:
+                    print("Failed to find module", data[0])
+                    continue
+
+                offset = int(data[1], 16)
+                value = int.from_bytes(proc.read(module.start+offset, 8), sys.byteorder)
+                if heap.contains_address(value):
+                    print(hex(value))
+                    static_pointers.append(Pointer(module, offset, value))
+        print('Loaded static_pointers:', len(static_pointers))
     else:
-        for name in args['module']:
-            mod = proc.find_module(name, mode='rw-p')
-            if not mod:
-                print('pointerscanner.py: error: Failed to locate module:', name)
-            else:
+        print('\nStart searching for static pointers ...')
+        if not args['module']:
+            for mod in proc.modules:
+                if '/dev/' in mod.path or '/memfd/' in mod.path:
+                    continue
+                if '(deleted)' in mod.path or ('[' in mod.path and ']' in mod.path):
+                    continue
+                if mod.mode != 'r--p':
+                    continue
+                if len(mod.path) <= 0:
+                    continue
+
                 results = find_static_pointers(mod)
                 static_pointers.extend(results)
                 print('%s: %d' % (mod.path, len(results)))
+        else:
+            for name in args['module']:
+                mod = proc.find_module(name, mode='rw-p')
+                if not mod:
+                    print('pointerscanner.py: error: Failed to locate module:', name)
+                else:
+                    results = find_static_pointers(mod)
+                    static_pointers.extend(results)
+                    print('%s: %d' % (mod.path, len(results)))
 
-    print('Total static_pointers found:', len(static_pointers))
-    if args['save'] is not None:
-        file_name = 'static.' + args['save'].strip()
-        with open(file_name, 'w+') as f:
-            for ptr in static_pointers:
-                f.write('%s + 0x%x\n' % (ptr.module.path, ptr.base_offset))
-        print('Saved to file:', file_name)
+        print('Total static_pointers found:', len(static_pointers))
+        if args['save'] is not None:
+            file_name = 'static.' + args['save'].strip()
+            with open(file_name, 'w+') as f:
+                for ptr in static_pointers:
+                    f.write('%s + 0x%x\n' % (ptr.module.path, ptr.base_offset))
+            print('Saved to file:', file_name)
 
 
     # search paths to address
@@ -181,6 +191,7 @@ def main():
                 text += line + '\n'
                 print(line)
 
+        print('Total paths found:', len(text.split('\n'))-1)
         if args['save'] is not None:
             file_name = 'path.' + args['save'].strip()
             with open(file_name, 'w+') as f:

@@ -1,20 +1,34 @@
+from dataclasses import dataclass
 from mmap import MAP_ANON, MAP_PRIVATE, PAGESIZE, PROT_EXEC, PROT_READ, PROT_WRITE
 from capstone import Cs, CS_ARCH_X86, CS_MODE_64
 
 
-from .libc import libc
+from .libc import libc, libmemscan
 from .module import Module
 from .ptracehelper import PTrace
 
 import signal
 import contextlib
 import ctypes
+import enum
 import sys
 import os
 
+class ScanMode(enum.Enum):
+    MATCH = 0   # Searches for exect match: x == arg1
+    INSIDE = 1  # Searches for number in between: arg1 <= x < arg2
+
+@dataclass
+class ScanResult():
+    address: int
+    data: bytes
+
+    @property
+    def value(self):
+        return int.from_bytes(self.data, sys.byteorder)
+
 
 class Process():
-
     def __init__(self, pid=None, name=None) -> None:
         assert pid != None or name != None, "Missing properties in Process: pid or name!"
 
@@ -38,6 +52,8 @@ class Process():
         self._function = {}
         self._detour = {}
         self._breakpoints = {}
+
+        self._regs = None
 
 
     @property
@@ -102,23 +118,16 @@ class Process():
 
     def write(self, address: int, value: bytes|int|str|bool, size: int|None = None, encoding: str = 'utf-8') -> int:
         libc.lseek(self.mem, address, os.SEEK_SET)
+        if type(value) is str:
+            value = bytes(value, encoding)
         if type(value) is bytes:
             if size is None:
-                return libc.write(self.mem, value, len(value))
-            else:
-                return libc.write(self.mem, value + bytes(max(size-len(value), 0)), size)
+                size = len(value)
+            return libc.write(self.mem, value + bytes(max(size-len(value), 0)), size)
         if type(value) is int or type(value) is bool:
-            try:
-                _s = 4 if size is None else size
-                return libc.write(self.mem, value.to_bytes(_s, sys.byteorder), _s)
-            except OverflowError: # TODO: find smarter solution
-                _s = 8 if size is None else size
-                return libc.write(self.mem, value.to_bytes(_s, sys.byteorder), _s)
-        if type(value) is str:
             if size is None:
-                return libc.write(self.mem, bytes(value, encoding), len(value))
-            else:
-                return libc.write(self.mem, bytes(value, encoding) + bytes(max(size-len(value), 0)), size)
+                size = 8 if value.bit_length() / 8 > 4 else 4
+            return libc.write(self.mem, value.to_bytes(size, sys.byteorder), size)
         return 0
 
     def read(self, address: int, size: int) -> bytes:
@@ -127,6 +136,43 @@ class Process():
         libc.read(self.mem, buffer, size)
 
         return bytes(buffer)
+
+    def scan(self, mode: ScanMode, start: int, end: int, arg1: bytes|int, arg2: bytes|int|None = None, chunksize: int = 2048) -> list[ScanResult]:
+        size1 = 0
+        size2 = 0
+
+        if type(arg1) is int:
+            size1 = 8 if arg1.bit_length() / 8 > 4 else 4
+            arg1 = arg1.to_bytes(size1, sys.byteorder)
+        elif type(arg1) is bytes:
+            size1 = len(arg1)
+
+        if type(arg2) is int:
+            size2 = 8 if arg2.bit_length() / 8 > 4 else 4
+            arg2 = arg2.to_bytes(size2, sys.byteorder)
+        elif type(arg2) is bytes:
+            size2 = len(arg2)
+
+        if mode == ScanMode.INSIDE:
+            assert arg2 != None, "arg2 must be set in ScanMode.INSIDE!"
+            assert size1 == size2, "arg1 and arg2 must have the same size!"
+
+        count = ctypes.c_size_t()
+        _data = ctypes.pointer(ctypes.c_char())
+        _addresses = libmemscan.memscan(self.mem, mode.value, start, end, arg1, arg2, size1, chunksize, ctypes.byref(count), ctypes.byref(_data))
+
+        addresses = _addresses[:count.value]
+        libc.free(_addresses)
+        assert type(addresses) is list, "Unexpected result from libmemscan.memscan!"
+
+        data = _data[:count.value*size1]
+        assert type(data) is bytes, "Unexpected result from libmemscan.memscan!"
+        libc.free(_data)
+
+        print(count.value)
+
+        return list(map(lambda x: ScanResult(x[1], data[x[0]*size1:(x[0]+1)*size1]), enumerate(addresses)))
+
 
     def find_module(self, path: str|None, mode: str|None = None, offset: int|None = None) -> Module | None:
         for m in self.modules:
@@ -240,6 +286,7 @@ class Process():
             backup_regs = ptrace.get_registers()
 
             # Overwrite registers with our the new parameters and address to function
+            print(regs.rip)
             regs.rax = addr
             regs.rdi = 0 if len(args) <= 0 else args[0]
             regs.rsi = 0 if len(args) <= 1 else args[1]
@@ -249,10 +296,11 @@ class Process():
             regs.r9 = 0 if len(args) <= 5 else args[5]
             ptrace.set_registers(regs)
 
+            # 48 81 e4 00 f0 ff ff    and    rsp,0xfffffffffffff000
             # ff d0                   call   rax
             # cc                      int3 
-            backup = ptrace.read(regs.rip)
-            self.write(regs.rip, bytes([0xFF, 0xD0, 0xCC]))
+            backup = self.read(regs.rip, 4)
+            self.write(regs.rip, 0xccd0ff)
 
             # Execute our injected code until breakpoint (int3)
             ptrace.cont()

@@ -28,17 +28,37 @@ class Module():
         with open(self.path, 'rb') as f:
             elf = ELFFile(f)
             dynsym = elf.get_section_by_name('.dynsym')
+            symtab = elf.get_section_by_name('.symtab')
+            symbols = []
 
-            assert isinstance(dynsym, SymbolTableSection), "Section is wrong instance"
+            if isinstance(dynsym, SymbolTableSection):
+                symbols += list(dynsym.iter_symbols())
+            if isinstance(symtab, SymbolTableSection):
+                symbols += list(symtab.iter_symbols())
 
             results = list(filter(
                 lambda x: x.name == name,
-                dynsym.iter_symbols()
+                symbols
             ))
 
             assert results, ("Symbol '%s' not found." % name)
 
             return results[0].entry['st_value']
+
+
+    def get_symbols(self) -> list:
+        with open(self.path, 'rb') as f:
+            elf = ELFFile(f)
+            dynsym = elf.get_section_by_name('.dynsym')
+            symtab = elf.get_section_by_name('.symtab')
+            symbols = []
+
+            if isinstance(dynsym, SymbolTableSection):
+                symbols += list(dynsym.iter_symbols())
+            if isinstance(symtab, SymbolTableSection):
+                symbols += list(symtab.iter_symbols())
+
+            return symbols
 
 
     def get_relocation_offset(self, name) -> int:

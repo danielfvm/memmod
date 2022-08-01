@@ -14,7 +14,7 @@ functions to modify the memory of another application externaly. Additionaly cre
 * bindings for ptrace
 * get path to binary file with `get_path_to_executable()`
 * search pattern in a module with a signature
-* resolve a pointerchain to find addresses, can be used with the [Pointer Scanner](scripts/pointerscanner.py).
+* resolve a pointerchain to find addresses, can be used with the [Pointer Scanner](memmod/scripts/pointerscanner.py).
 * supports mono specific calls, [see here](memmod/monomanager.py)
 * find symbol and relocation offsets within a module
 
@@ -53,8 +53,8 @@ For more information see [this](https://ancat.github.io/python/2019/01/01/python
 ## Scripts
 To show the capabilities of this library I programmed a few scripts that can be helpful when searching
 for addresses. These scripts where inspired by the functionalities of [CheatEngine](https://cheatengine.org/).
-* [Access Analyzer](scripts/accessanalyzer.py)
-* [Pointer Scanner](scripts/pointerscanner.py)
+* [Access Analyzer](memmod/scripts/accessanalyzer.py)
+* [Pointer Scanner](memmod/scripts/pointerscanner.py)
 
 
 ## Resources
@@ -68,6 +68,7 @@ Here are some useful links to websites that helped me making this library and th
 * [LD_PRELOAD and Symbols](http://www.goldsborough.me/c/low-level/kernel/2016/08/29/16-48-53-the_-ld_preload-_trick/)
 * [Guided Hacking - Function hooking](https://guidedhacking.com/threads/how-to-hook-functions-code-detouring-guide.14185/)
 * [Guided Hacking - Unity / Mono](https://www.youtube.com/watch?v=e7cCus-LfBo)
+* [Mono API Documentation](http://docs.go-mono.com/?link=root:/embed)
 
 
 ## Tools
@@ -75,3 +76,4 @@ Some tools and programs that I used when testing and debugging the library and i
 * readelf (read symbols from binary file)
 * objdump (assembler code of binary file)
 * gdb (for debugging the target process)
+* monodis
