@@ -6,10 +6,9 @@ from distutils.errors import DistutilsExecError
 from distutils.errors import DistutilsPlatformError
 
 ext_modules = [
-    Extension("python_ctypes._extensions.memscan",
-              #include_dirs=["<header-file-directory>"],
-              sources=["./lib/memscan.c"],
-             ),
+    Extension("memscan.memscan",
+      sources=["./memscan/memscan.c"],
+     ),
 ]
 
 

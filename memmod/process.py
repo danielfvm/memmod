@@ -169,8 +169,6 @@ class Process():
         assert type(data) is bytes, "Unexpected result from libmemscan.memscan!"
         libc.free(_data)
 
-        print(count.value)
-
         return list(map(lambda x: ScanResult(x[1], data[x[0]*size1:(x[0]+1)*size1]), enumerate(addresses)))
 
 
@@ -286,7 +284,6 @@ class Process():
             backup_regs = ptrace.get_registers()
 
             # Overwrite registers with our the new parameters and address to function
-            print(regs.rip)
             regs.rax = addr
             regs.rdi = 0 if len(args) <= 0 else args[0]
             regs.rsi = 0 if len(args) <= 1 else args[1]

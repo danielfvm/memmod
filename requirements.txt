@@ -1,2 +1,2 @@
-elftools==0.28
+pyelftools==0.28
 capstone==5.0.0
