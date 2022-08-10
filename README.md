@@ -28,6 +28,19 @@ proc.write(coin_ptr_addr, 9999)
 ```
 
 
+## Installation
+You can find the uploaded library [here](https://pypi.org/project/libmemmod/) and install it with:
+```
+pip3 install libmemmod
+```
+Together with the library you can also use the various [scripts](memmod/scripts/) that have been installed.
+Here an example of their usage:
+```
+sudo -E loadshared -n supertux2 mysharedlib.so
+sudo -E accessanalyzer -n supertux2 -a 0x559c7b55330e
+sudo -E pointerscanner -p 1234 -a 0x558599fb6fe0 -r 0x1ff
+```
+
 ## Features
 * read/write to a process
 * inject breakpoints and listen to them
