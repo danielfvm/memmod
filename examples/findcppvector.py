@@ -36,7 +36,7 @@ for adr, val in pointers.items():
         continue
 
     size = int(size / 8)
-    if not(size >= 200 and size <= 300):
+    if not(size > 100 and size < 300):
         continue
 
     valid = True

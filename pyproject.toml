@@ -1,14 +1,14 @@
 [tool.poetry]
 name = "memmod"
-version = "0.0.2"
+version = "0.0.3"
 description = "A library to modify another program's memory."
 authors = [ "DanielFvM <ds@xxxmail.eu>" ]
-build = "build.py"
 license = "GPL-3.0-only"
 readme = "README.md"
 homepage = "https://github.com/danielfvm/memmod"
 repository = "https://github.com/danielfvm/memmod"
 keywords = ["linux", "memory", "hacking-tools"]
+build = "build.py"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -16,5 +16,10 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
 python = "*"
-capstone = "^5.0.0"
 pyelftools = "^0.28"
+capstone = "4.0.2"
+
+[tool.poetry.scripts]
+accessanalyzer = "memmod.scripts.accessanalyzer:main"
+pointerscanner = "memmod.scripts.pointerscanner:main"
+loadshared = "memmod.scripts.loadshared:main"

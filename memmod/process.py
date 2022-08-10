@@ -1,11 +1,13 @@
 from dataclasses import dataclass
-from mmap import MAP_ANON, MAP_PRIVATE, PAGESIZE, PROT_EXEC, PROT_READ, PROT_WRITE
+from mmap import MAP_ANON, MAP_PRIVATE, PAGESIZE, PROT_EXEC, PROT_READ, PROT_WRITE, mmap
 from capstone import Cs, CS_ARCH_X86, CS_MODE_64
 
-
-from .libc import libc, libmemscan
+from .memscan import memscan
+from .libc import libc
 from .module import Module
 from .ptracehelper import PTrace
+
+from Xlib import Xatom, X, XK, protocol, display
 
 import signal
 import contextlib
@@ -27,6 +29,13 @@ class ScanResult():
     def value(self):
         return int.from_bytes(self.data, sys.byteorder)
 
+
+@dataclass
+class XWindow():
+    wid: int|None
+    pid: int
+    title: str
+    clazz: str
 
 class Process():
     def __init__(self, pid=None, name=None) -> None:
@@ -52,9 +61,13 @@ class Process():
         self._function = {}
         self._detour = {}
         self._breakpoints = {}
-
+        self._x11_display = None
+        self._x11_root = None
         self._regs = None
 
+    def __del__(self) -> None:
+        if hasattr(self, '_mem') and self._mem:
+            libc.close(self._mem)
 
     @property
     def modules(self) -> list[Module]:
@@ -62,17 +75,74 @@ class Process():
             self.load_modules()
         return self._modules
 
-
-    def __del__(self) -> None:
-        if hasattr(self, '_mem') and self._mem:
-            libc.close(self._mem)
-
     @property
     def mem(self):
         if not self._mem:
             self._mem = libc.open(os.path.join('/proc/', str(self.pid), 'mem').encode('utf-8'), 2)
             assert self.mem != -1, "Cannot access /proc/%d/mem, forgot sudo?" % self.pid
         return self._mem
+
+    @property
+    def x11_display(self) -> display.Display:
+        if not self._x11_display:
+            self._x11_display = display.Display()
+        return self._x11_display
+
+    @property
+    def x11_root(self):
+        if not self._x11_root:
+            self._x11_root = self.x11_display.screen(0)['root']
+        return self._x11_root
+
+
+    def _x11_query_property(self, win, name, prop_type, format_size, empty=None):
+        if isinstance(win, int):
+            win = self.x11_display.create_resource_object('window', win)
+        if isinstance(name, str):
+            name = self.x11_display.get_atom(name)
+
+        result = win.get_full_property(name, prop_type)
+        if result and result.format == format_size:
+            return result.value
+        return empty
+
+    def get_x11_window(self):
+        window_ids = ([self.x11_root.id] + list(self._x11_query_property(self.x11_root, '_NET_CLIENT_LIST', Xatom.WINDOW, 32, [])))
+        window_list = []
+
+        for wid in window_ids:
+            pid = self._x11_query_property(wid, '_NET_WM_PID', Xatom.CARDINAL, 32)
+            if pid is not None:
+                pid = pid[0]
+
+            title = self._x11_query_property(wid, '_NET_WM_NAME', display.Display.intern_atom(self.x11_display, 'UTF8_STRING'), 8)
+            clazz = self._x11_query_property(wid, 'WM_CLASS', Xatom.STRING, 8)
+
+            if pid == self.pid:
+                window_list.append(XWindow(wid, pid, title, clazz))
+
+        return window_list
+
+    def send_key(self, window: XWindow, keysym):
+        keyCode = self.x11_display.keysym_to_keycode(keysym)
+
+        keyEvent = protocol.event.KeyPress(
+            detail = keyCode,
+            time = X.CurrentTime,
+            root = self.x11_root,
+            window = window.wid,
+            child = X.NONE,
+            root_x = 1,
+            root_y = 1,
+            event_x = 1,
+            event_y = 1,
+            state = 0,
+            same_screen = 1
+        )
+
+        self.x11_display.sync()
+        self.x11_display.send_event(window.wid, keyEvent, X.KeyPressMask, True)
+        self.x11_display.sync()
 
     def _load_status(self) -> None:
         self.status = {}
@@ -113,8 +183,11 @@ class Process():
 
         return self._modules
 
-    def get_path_to_executable(self) -> str:
-        return os.readlink(os.path.join('/proc/', str(self.pid), 'exe'))
+    def get_path_to_executable(self) -> str|None:
+        try:
+            return os.readlink(os.path.join('/proc/', str(self.pid), 'exe'))
+        except:
+            return None
 
     def write(self, address: int, value: bytes|int|str|bool, size: int|None = None, encoding: str = 'utf-8') -> int:
         libc.lseek(self.mem, address, os.SEEK_SET)
@@ -157,19 +230,9 @@ class Process():
             assert arg2 != None, "arg2 must be set in ScanMode.INSIDE!"
             assert size1 == size2, "arg1 and arg2 must have the same size!"
 
-        count = ctypes.c_size_t()
-        _data = ctypes.pointer(ctypes.c_char())
-        _addresses = libmemscan.memscan(self.mem, mode.value, start, end, arg1, arg2, size1, chunksize, ctypes.byref(count), ctypes.byref(_data))
+        results = memscan(self.mem, mode.value, start, end, arg1, arg2, size1, chunksize)
 
-        addresses = _addresses[:count.value]
-        libc.free(_addresses)
-        assert type(addresses) is list, "Unexpected result from libmemscan.memscan!"
-
-        data = _data[:count.value*size1]
-        assert type(data) is bytes, "Unexpected result from libmemscan.memscan!"
-        libc.free(_data)
-
-        return list(map(lambda x: ScanResult(x[1], data[x[0]*size1:(x[0]+1)*size1]), enumerate(addresses)))
+        return [ ScanResult(*x) for x in results ]
 
 
     def find_module(self, path: str|None, mode: str|None = None, offset: int|None = None) -> Module | None:
@@ -221,7 +284,7 @@ class Process():
                         return addr + i + j
         return 0
 
-    def resolve_pointer_chain(self, baseaddr, offsets: list[int]) -> int:
+    def resolve_pointer_chain(self, baseaddr, offsets: list[int] = [0]) -> int:
         addr = baseaddr
 
         for offset in offsets:
@@ -317,17 +380,17 @@ class Process():
         # return result of function, stored in rax
         return regs.rax
 
-    def load_shaderd_library(self, path) -> int:
+    def load_shaderd_library(self, path: str, flags: int = 0x1) -> int: # RTLD_LAZY = 0x1
         path = os.path.realpath(path)
         assert os.path.exists(path), "File does not exist"
 
         dlopen = self.get_libc_function('dlopen') or self.get_libc_function('__libc_dlopen_mode')
         assert dlopen != None, "Failed to locate dlopen in libc"
 
-        # call libc function with path and RTLD_LAZY
-        return dlopen(path, 0x1)
+        # call libc function with path and flags
+        return dlopen(path, flags)
 
-    def create_detour(self, address: int, dest: int, size: int = 0, trampoline = False) -> int:
+    def create_detour(self, address: int, dest: int, size: int = 0, trampoline: bool = False) -> int:
         hook_len = 14
         jmp_code = bytes([ 0xFF, 0x25, 0x00, 0x00, 0x00, 0x00 ]) # 8 byte address follows
 
@@ -448,18 +511,3 @@ class Process():
                 ptrace.stop()
                 for address, info in self._breakpoints.items():
                     self.write(address, info['original'])
-
-
-# Create and destroy detour
-"""
-base = p.find_module("test")
-tramp = p.create_detour(base.start + 0x117f, base.start + 0x119e, trampoline=True)
-print(tramp)
-
-got_strtol = base.start + base.get_relocation_offset("strtol")
-p.write(got_strtol, tramp)
-
-time.sleep(4)
-
-p.destroy_detour(base.start + 0x117f)
-"""

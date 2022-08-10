@@ -1,5 +1,5 @@
 import ctypes, ctypes.util
-import os
+from pathlib import Path
 
 libc = None
 libmemscan = None
@@ -32,13 +32,3 @@ try:
     libc.ptrace.restype = ctypes.c_uint64
 except Exception as e:
     print("Failed to find or load libc:", e)
-
-try:
-    folder = os.path.dirname(os.path.realpath(__file__))
-    folder = folder[0:folder.rfind('/')]
-    path_libmemscan = folder + '/memscan/libmemscan.so'
-    libmemscan = ctypes.CDLL(path_libmemscan)
-    libmemscan.memscan.argtypes = [ctypes.c_int32, ctypes.c_int32, ctypes.c_int64, ctypes.c_int64, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int64, ctypes.POINTER(ctypes.c_size_t), ctypes.POINTER(ctypes.POINTER(ctypes.c_char))]
-    libmemscan.memscan.restype = ctypes.POINTER(ctypes.c_int64)
-except Exception as e:
-    print("Failed to find or load libmemscan:", e)

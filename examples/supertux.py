@@ -14,7 +14,6 @@ print(len(results))
 for i, r in enumerate(results):
     print(i, r.address, hex(r.value))
 
-sys.exit()
 
 # Hello World 
 puts = proc.get_libc_function("puts")

@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="adw" version="1.0"/>
+  <template class="MainWindow" parent="GtkApplicationWindow">
+    <property name="title">Memmod 0.1</property>
+    <property name="default-width">800</property>
+    <property name="default-height">600</property>
+    <property name="modal">True</property>
+    <child type="titlebar">
+      <object class="GtkHeaderBar" id="header_bar">
+        <child type="end">
+          <object class="GtkMenuButton" id="button_hambuger">
+            <property name="icon-name">open-menu-symbolic</property>
+            <property name="menu-model">menu_hamburger</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkButton">
+            <property name="icon-name">view-paged-symbolic</property>
+            <signal name="clicked" handler="show_dialog_process_select"/>
+          </object>
+        </child>
+        <child type="start">
+          <object class="GtkMenuButton" id="button_more">
+            <property name="icon-name">pan-down-symbolic</property>
+            <property name="sensitive">False</property>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="AdwTabBar">
+            <property name="start-action-widget">button_more</property>
+            <property name="view">view</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwTabView" id="view">
+            <property name="vexpand">True</property>
+            <property name="menu-model">menu_tab</property>
+            <property name="selected-page">page_welcome</property>
+            <signal name="page-detached" handler="create_new_window"/>
+            <child>
+              <object class="AdwTabPage" id="page_welcome">
+                <property name="child">
+                  <object class="GtkLabel">
+                    <property name="hexpand">True</property>
+                    <property name="label">Welcome to memmod!</property>
+                    <property name="vexpand">True</property>
+                  </object>
+                </property>
+                <property name="title">Welcome</property>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+  <menu id="menu_tab">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Move to New Window</attribute>
+        <attribute name="action">tab.move-to-new-window</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">D_uplicate</attribute>
+        <attribute name="action">tab.duplicate</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Close</attribute>
+        <attribute name="action">tab.close</attribute>
+      </item>
+    </section>
+  </menu>
+  <menu id="menu_hamburger">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_About</attribute>
+        <attribute name="action">win.about</attribute>
+      </item>
+    </section>
+  </menu>
+</interface>
