@@ -3,7 +3,7 @@ A library to modify another program's memory on linux x64. The goal of this libr
 functions to modify the memory of another application externaly. Additionaly creating a program like
 [CheatEngine](https://cheatengine.org/) that runs natively on Linux with many features that CheatEngine provides.
 
-## Example
+## Examples
 A basic example on how to use memmod, for more examples look [here](examples).
 ```py
 from memmod import Process
