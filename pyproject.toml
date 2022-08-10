@@ -10,6 +10,10 @@ repository = "https://github.com/danielfvm/memmod"
 keywords = ["linux", "memory", "hacking-tools"]
 build = "build.py"
 
+[tool.poetry.urls]
+"Homepage" = "https://github.com/danielfvm/memmod"
+"Bug Tracker" = "https://github.com/danielfvm/memmod/issues"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
