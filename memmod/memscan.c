@@ -46,7 +46,7 @@ static PyObject* memscan(PyObject *self, PyObject *args) {
 	int64_t start, end, argsize, chunksize;
 	char *arg1, *arg2;
 	uint8_t* buffer;
-
+	uint64_t i;
 
 	ret = PyList_New(0);
 
@@ -68,20 +68,23 @@ static PyObject* memscan(PyObject *self, PyObject *args) {
 
 	for (int64_t adr = start; adr < end; adr += chunksize - argsize + 1) {
 		int64_t size = min(chunksize, end-adr);
+		if (size < argsize) break;
+
 		memread(fd, adr, buffer, size);
 
 		switch (type) {
 		case MATCH:
-			for (uint64_t i = 0; i < size - argsize; ++ i) {
+			for (i = 0; i < size - argsize; ++ i) {
 				if (memcmp(buffer + i, arg1, argsize) == 0) {
 					PyObject* address = Py_BuildValue("K", adr + i);
 					PyObject* data = PyBytes_FromStringAndSize(buffer + i, argsize);
 					PyList_Append(ret, Py_BuildValue("OO", address, data));
+					i += argsize-1;
 				}
 			}
 			break;
 		case INSIDE: 
-			for (uint64_t i = 0; i < size - argsize; ++ i) {
+			for (i = 0; i < size - argsize; ++ i) {
 				memset(conv.bytes, 0, 8);
 				memcpy(conv.bytes, buffer + i, argsize);
 				if (bottom.number <= conv.number && conv.number < top.number) {

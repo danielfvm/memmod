@@ -29,6 +29,20 @@ class ScanResult():
     def value(self):
         return int.from_bytes(self.data, sys.byteorder)
 
+class HookMode(enum.Enum):
+    BEFORE = "before"   # Execute payload before replaced code
+    AFTER = "after"     # Execute payload after replaced code (default)
+    REPLACE = "none"    # Do not run replaced code
+
+@dataclass
+class Hook():
+    hook_address: int
+    hook_size: int
+    original_code: bytes
+
+    payload_address: int
+    payload_size: int
+    payload_code: bytes
 
 @dataclass
 class XWindow():
@@ -225,6 +239,8 @@ class Process():
             arg2 = arg2.to_bytes(size2, sys.byteorder)
         elif type(arg2) is bytes:
             size2 = len(arg2)
+        else:
+            arg2 = b''
 
         if mode == ScanMode.INSIDE:
             assert arg2 != None, "arg2 must be set in ScanMode.INSIDE!"
@@ -390,6 +406,7 @@ class Process():
         # call libc function with path and flags
         return dlopen(path, flags)
 
+
     def create_detour(self, address: int, dest: int, size: int = 0, trampoline: bool = False) -> int:
         hook_len = 14
         jmp_code = bytes([ 0xFF, 0x25, 0x00, 0x00, 0x00, 0x00 ]) # 8 byte address follows
@@ -438,6 +455,57 @@ class Process():
             munmap(trampoline, PAGESIZE)
 
         return True
+
+
+    def insert_hook(self, address: int, payload_code: bytes, hook_size: int = 0, mode = HookMode.AFTER) -> Hook | None:
+        jmp_code_len = 5
+
+        module = self.find_module_with_address(address)
+        if not module:
+            return None # Invalid address
+
+        binary = self.read(address, 64)
+        if binary[0] == 0xE9:
+            return None # Hook already exists, or another jmp that is not allowed to be replaced
+
+        if hook_size < jmp_code_len:
+            md = Cs(CS_ARCH_X86, CS_MODE_64)
+            for instruction in md.disasm(binary, 0x0):
+                if instruction.address+instruction.size >= jmp_code_len:
+                    hook_size = instruction.address+instruction.size
+                    break
+
+        payload_len = (0 if mode == HookMode.REPLACE else hook_size) + len(payload_code) + jmp_code_len
+        res = self.scan(ScanMode.MATCH, module.start, module.end, bytes(payload_len))
+        if not res:
+            return None # No free space found
+
+        payload_address = res[-1].address
+
+        # write binarycode that was replace by the hook + payload_code + jmp offset
+        offset = address - (payload_address + payload_len) + jmp_code_len
+        if mode == HookMode.AFTER:
+            self.write(payload_address, binary[0:hook_size] + payload_code + b'\xE9' + offset.to_bytes(4, sys.byteorder, signed=True))
+        elif mode == HookMode.BEFORE:
+            self.write(payload_address, payload_code + binary[0:hook_size] + b'\xE9' + offset.to_bytes(4, sys.byteorder, signed=True))
+        else:
+            self.write(payload_address, payload_code + b'\xE9' + offset.to_bytes(4, sys.byteorder, signed=True))
+
+        # jmp offset
+        # nop * (size - hook_len)
+        offset = payload_address - (address+jmp_code_len)
+        self.write(address, b"\xE9" + offset.to_bytes(4, sys.byteorder) + b"\x90" * (hook_size - jmp_code_len))
+
+        return Hook(address, hook_size, binary[0:hook_size], payload_address, payload_len, payload_code)
+
+    def remove_hook(self, hook: Hook) -> bool:
+        if self.read(hook.hook_address, 1)[0] != 0xE9:
+            return False # Hook already removed
+
+        removed_hook = self.write(hook.hook_address, hook.original_code, hook.hook_size) == hook.hook_size
+        removed_payload = self.write(hook.payload_address, b'\x00' * hook.payload_size) == hook.payload_size
+
+        return removed_hook and removed_payload
 
 
     @staticmethod

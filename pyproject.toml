@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "libmemmod"
-version = "0.0.4"
+version = "0.0.5"
 description = "A library to modify another program's memory."
 authors = [ "DanielFvM <ds@xxxmail.eu>" ]
 license = "GPL-3.0-only"
@@ -31,3 +31,4 @@ xlib = "^0.21"
 accessanalyzer = "memmod.scripts.accessanalyzer:main"
 pointerscanner = "memmod.scripts.pointerscanner:main"
 loadshared = "memmod.scripts.loadshared:main"
+timerhack = "memmod.scripts.timerhack:main"

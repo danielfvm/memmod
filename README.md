@@ -38,7 +38,8 @@ Here an example of their usage:
 ```
 sudo -E loadshared -n supertux2 mysharedlib.so
 sudo -E accessanalyzer -n supertux2 -a 0x559c7b55330e
-sudo -E pointerscanner -p 1234 -a 0x558599fb6fe0 -r 0x1ff
+sudo -E pointerscanner -n supertux2 -a 0x558599fb6fe0 -r 0x1ff
+sudo -E timerhack -n supertux2 -f 2.0
 ```
 
 ## Features
@@ -92,9 +93,10 @@ For more information see [this](https://ancat.github.io/python/2019/01/01/python
 ## Scripts
 To show the capabilities of this library I programmed a few scripts that can be helpful when searching for addresses and are 
 also being installed when installing this library. These scripts where inspired by the functionalities of [CheatEngine](https://cheatengine.org/).
-* [Access Analyzer](memmod/scripts/accessanalyzer.py)
-* [Pointer Scanner](memmod/scripts/pointerscanner.py)
-* [Load Shared Library](memmod/scripts/loadshared.py)
+* [Access Analyzer](memmod/scripts/accessanalyzer.py) Searches for asm instruction accessing address
+* [Pointer Scanner](memmod/scripts/pointerscanner.py) Searches for pointers pointing to an address
+* [Load Shared Library](memmod/scripts/loadshared.py) Loads a `.so` file to a process
+* [Timer hack](memmod/scripts/timerhack.py) Speeds up the clock by a defined factor (x64 only)
 
 
 ## Resources
@@ -118,3 +120,4 @@ Some tools and programs that I used when testing and debugging the library and i
 * objdump (assembler code of binary file)
 * gdb (for debugging the target process)
 * monodis
+* [online-86-assembler](https://defuse.ca/online-x86-assembler.htm)
