@@ -1,27 +1,13 @@
-from dataclasses import dataclass
-from mmap import PAGESIZE
-from capstone import Cs, CS_ARCH_X86, CS_MODE_64
-from memmod import Process, ScanMode, module
-
-import enum
-import time
-import sys
+from memmod import Process
 
 # Open process
-proc = Process(name="kono")
+proc = Process(name="supertux")
 print(proc.pid)
+
 
 # Find base module
 modulebase = proc.find_module(proc.name)
 assert modulebase != None, "Failed to find module base"
-
-heap = proc.find_module("heap")
-assert heap != None, "Heap not found!"
-
-
-# Hello World 
-puts = proc.get_libc_function("puts")
-
 
 # Pointer chain
 static_ptr = modulebase.start + 0x6CBC40
@@ -35,6 +21,9 @@ onground_ptr_addr = proc.resolve_pointer_chain(static_ptr, [0x10,    0x8,     0x
 print("OnGround addr:", hex(onground_ptr_addr))
 
 
+# get the puts function 
+puts = proc.get_libc_function("puts")
+
 # Breakpoint example
 # addr: 0x00005606ae0fa566  access: write  offset: /usr/bin/supertux2+0x311566  
 # asm:  mov dword ptr [rdx + 4], eax
@@ -46,11 +35,9 @@ def handle_damage(regs, _):
 
     return True
 
-# Start listen
 print("damage breakpoint:", hex(modulebase.start + 0x311566))
 proc.add_breakpoint(modulebase.start + 0x311566, handle_damage)
 proc.listen()
-
 
 
 
