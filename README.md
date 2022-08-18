@@ -70,16 +70,15 @@ For reading and writting use the functions `read()` and `write()`, searching for
 ### Debugging
 For debugging we use the ptrace systemcall that allows us to stop a process, read its registers and continue until it reaches
 a breakpoint. A breakpoint in x64 linux is the hex number 0xCC and we can simply write this byte into the process as explained
-in the previous section. To use the debugger with this library run `with proc.ptrace() as ptrace:`, when running this, it will
-automatically attach to the process and stops, after that it will NOT detach, but instead just continue! If you want it to detach
-you will need todo it manually with `ptrace.detach()`.
-For easier handling with debugging and breakpoints you can use `add_breakpoint()`, it will take an `address` and a `handler` that
-is being executed as soon as the target process reaches the breakpoint. Optionaly you can provide it with data that can be used
-int the handler. The handler will receive the registers and the data if provided. The handler must return a boolean, if it returns
-`False` the breakpoint will be removed, to keep the breakpoint return `True`. But to start listening to the breakpoints you will
-need to run the `listen()` function. Note that the breakpoints are not being written into the memory by `add_breakpoint()` but by
-`listen()`. Listen will stop when all breakpoints have been deleted or the user interrupts it with ctrl+c, which will lead to the
-automatic removal of all breakpoints. Look [here](/examples/) for examples on how to use it.
+in the previous section. To use ptrace with this library run `with proc.ptrace() as ptrace:`, when running this, it will
+automatically attach and stop the process, after that it will NOT detach, but instead just continue! If you want to detach
+you will need todo it manually with `ptrace.detach()`. For easier handling with debugging and breakpoints you can use `add_breakpoint()`, 
+it will take an `address` and a `handler` that is being executed as soon as the target process reaches the breakpoint. Optionaly you 
+can provide it with data that can be used in the handler. The handler will receive the registers and the data if provided. The handler 
+must return a boolean, if it returns `False` the breakpoint will be removed, to keep the breakpoint return `True`. But to start 
+listening to the breakpoints you will need to run the `listen()` function. Note that the breakpoints are not being written into the 
+memory by `add_breakpoint()` but by `listen()`. Listen will stop when all breakpoints have been deleted or the user interrupts it with 
+ctrl+c, which will lead to the automatic removal of all breakpoints. Look [here](/examples/) for examples on how to use it.
 
 ### Function execution
 We use ptrace to stop the application and write the `call rax` instruction at the current `rip` location and a breakpoint after 
