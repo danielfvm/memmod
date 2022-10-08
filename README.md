@@ -47,7 +47,7 @@ sudo -E timerhack -n supertux2 -f 2.0
 * inject breakpoints and listen to them
 * execute functions within the target process
 * find modules from `/proc/pid/maps` by name, mode, offset or address
-* inject `.so` into target process with `load_shaderd_library()`
+* inject `.so` into target process with `load_shared_library()`
 * create function detours with an optional trampoline
 * bindings for ptrace
 * get path to binary file with `get_path_to_executable()`
