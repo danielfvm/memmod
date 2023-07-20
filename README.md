@@ -23,7 +23,7 @@ assert modulebase != None, "Failed to find module base"
 static_ptr = modulebase.start + 0x6CBC40
 coin_ptr_addr = proc.resolve_pointer_chain(static_ptr, [0x28, 0x20, 0x0])
 
-# Write to address a number
+# Write a number to address
 proc.write(coin_ptr_addr, 9999)
 ```
 
