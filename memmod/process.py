@@ -189,8 +189,8 @@ class Process():
                     end = int(address[1], 16),
                     mode = args[1],
                     offset = int(args[2], 16),
-                    major = int(device[0]),
-                    minor = int(device[1]),
+                    major = int(device[0], 16),
+                    minor = int(device[1], 16),
                     inode = int(args[4]),
                     path = args[5] if len(args) == 6 else "",
                 ))

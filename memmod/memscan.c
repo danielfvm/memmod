@@ -1,9 +1,9 @@
-#include <python3.10/Python.h>
+#include <Python.h>
 
-#include <python3.10/bytesobject.h>
-#include <python3.10/listobject.h>
-#include <python3.10/modsupport.h>
-#include <python3.10/pyport.h>
+#include <bytesobject.h>
+#include <listobject.h>
+#include <modsupport.h>
+#include <pyport.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
