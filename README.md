@@ -1,4 +1,9 @@
 # memmod
+![Repository size](https://img.shields.io/github/repo-size/danielfvm/memmod?color=39d45f) 
+[![GitHub last commit](https://img.shields.io/github/last-commit/danielfvm/memmod?color=39d45f)](https://github.com/danielfvm/memmod/commits/master) 
+![License](https://img.shields.io/badge/license-GPL-39d45f) 
+[![Stargazers](https://img.shields.io/github/stars/danielfvm/memmod?color=39d45f&logo=github)](https://github.com/danielfvm/memmod/stargazers)
+
 A library to modify another program's memory on linux x64. The goal of this library is to provide easy
 functions to modify the memory of another application externaly. Additionaly creating a program like
 [CheatEngine](https://cheatengine.org/) that runs natively on Linux with many features that CheatEngine provides.
